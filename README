@@ -1,0 +1,1 @@
+A demo of doing JSON-RPC on websockets vs doing it over a traditional AJAX connection.
