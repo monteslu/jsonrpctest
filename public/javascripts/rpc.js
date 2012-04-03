@@ -1,49 +1,14 @@
   dojo.require('dojox.rpc.Service');
   dojo.require('dojox.rpc.JsonRPC');
-  //dojo.require('dojox.rpc.JsonRpc');
-  dojo.require('dojox.io.scriptFrame');
   
-  var randSession = 'ses' + Math.random();
-  console.log(randSession);
-
   var socket = io.connect('/');
-  socket.on('news', function (data) {
-    console.log(data);
-    socket.emit('my other event', { my: 'data' });
-  });
-
-  socket.on('allpush', function (data) {
-    console.log('allpush',data);
-  });
-  
-  socket.on('sessionBroadcast', function (data) {
-	    console.log('sessionBroadcast',data);
-	  });
   
   socket.on('rpc',function(rpc){
     console.log('rpc result',rpc);
   });
   
-  socket.emit('joinSession',{'sessionName':randSession});
-
-  var send = function(sessionName,obj){
-	dojo.xhrGet({	
-	url: '/broadcastMessage',
-	content: {
-		sessionName: sessionName,
-		json: dojo.toJson(obj)		
-	},
-	load: function(resp){
-		console.log('push response',resp);
-	},
-	error: function(err){
-		console.log('push error',err);
-	},
-	handleAs: 'json'
-	});
-}
-
-var callNum = 0;
+  
+  
 var wsRpc = {
   callNum: 0,
   resultCBs: {},
@@ -65,23 +30,61 @@ var wsRpc = {
 socket.on('rpc',function(rpcObj){
   //console.log('rpcObj',rpcObj);
   try{
-    if(rpcObj.result){
-	if(wsRpc.resultCBs[rpcObj.id]){
-	  var result = rpcObj.result;
-	  wsRpc.resultCBs[rpcObj.id](result); 
-	}
-    }else if(rpcObj.error){
+    if(rpcObj.error){
       if(wsRpc.errorCBs[rpcObj.id]){
-	  var error = rpcObj.error;
-	  wsRpc.errorCBs[rpcObj.id](error); 
+        var error = rpcObj.error;
+  wsRpc.errorCBs[rpcObj.id](error); 
       }
+    }else{
+      if(wsRpc.resultCBs[rpcObj.id]){
+        var result = rpcObj.result;
+        wsRpc.resultCBs[rpcObj.id](result); 
+      }      
     }
   }catch(e){
      console.log('malformed rpc response', rpcObj,e);
   }
 });
 
-var rpc;
+var ajaxRpc;
 dojo.ready(function(){
-  rpc = new dojox.rpc.Service('/smd');
+  ajaxRpc = new dojox.rpc.Service('/smd');
+  
+  dojo.connect(dojo.byId('wbutton'),'onclick',function(){
+    var timeStart = Date.now();
+    wsRpc.call('square',dojo.byId('num1').value,
+       function(result){
+         dojo.byId('result').innerHTML = result;
+         showElapsed(timeStart);
+       }, 
+       function(error){
+         dojo.byId('result').innerHTML = 'ERROR:' + error;
+         showElapsed(timeStart);
+       }
+    );
+  });
+  
+  
+  dojo.connect(dojo.byId('abutton'),'onclick',function(){
+        var timeStart = Date.now();
+        var aDeff = ajaxRpc.square(dojo.byId('num1').value);
+        aDeff.addCallback(function(result){
+          dojo.byId('result').innerHTML = result;
+          showElapsed(timeStart);
+        });
+        aDeff.addErrback(function(result){
+          dojo.byId('result').innerHTML = 'ERROR:' + error; 
+          showElapsed(timeStart);
+        });  
+  });
+  
+  
 });
+
+var showElapsed = function(timeStart){
+  dojo.byId('elapsedTime').innerHTML = getElapsed(timeStart);
+};
+
+var getElapsed = function(start){
+  return Date.now() - start;  
+};

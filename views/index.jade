@@ -1,7 +1,23 @@
-h1= title
-p Welcome to #{title}
-
 script(type='text/javascript', src='/socket.io/socket.io.js')
 script(type='text/javascript', src='/javascripts/rpc.js')
 
-span context items
+h1 JSON-RPC traditional and websockets
+
+div Square a number:
+  input(type="text", id="num1", value="2", size="5")
+br
+div result: &nbsp; &nbsp;
+  span(id="result")
+br
+div elapsed milliseconds: &nbsp; &nbsp;
+  span(id="elapsedTime")
+br
+br
+input(type="button", id="abutton", value="Ajax")
+span &nbsp; &nbsp;
+input(type="button", id="wbutton", value="Websocket")
+br
+br
+
+
+

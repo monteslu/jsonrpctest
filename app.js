@@ -96,6 +96,13 @@ var rpcFunctions = {
        errCB(e); 
     }
     
+  },
+  square: function( args, resultCB, errCB){
+    try{
+      resultCB(args * args);
+    }catch(e){
+       errCB(e); 
+    }
   }
   
 };
@@ -131,7 +138,6 @@ console.log("Express server listening on port %d in %s mode", app.address().port
 
 io.sockets.on('connection', function (socket) {
   
-  socket.emit('news', { hello: 'world' });
   
 
   socket.on('rpc',function(rpc){
