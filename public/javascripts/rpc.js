@@ -3,9 +3,6 @@
   
   var socket = io.connect('/');
   
-  socket.on('rpc',function(rpc){
-    console.log('rpc result',rpc);
-  });
   
   
   
@@ -33,7 +30,7 @@ socket.on('rpc',function(rpcObj){
     if(rpcObj.error){
       if(wsRpc.errorCBs[rpcObj.id]){
         var error = rpcObj.error;
-  wsRpc.errorCBs[rpcObj.id](error); 
+        wsRpc.errorCBs[rpcObj.id](error); 
       }
     }else{
       if(wsRpc.resultCBs[rpcObj.id]){
