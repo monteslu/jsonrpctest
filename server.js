@@ -35,7 +35,7 @@ app.get('/', routes.index);
 
 
 app.get('/jsonrpc', function(req,resp){
-  jsonRpc(req.query.rpc,resp,req.query.callback);
+  jsonRpc(req.query.rpc,req,resp,req.query.callback);
 });
 
 app.post('/jsonrpc', function(req,resp){
@@ -44,13 +44,13 @@ app.post('/jsonrpc', function(req,resp){
     body += data;
   });
   req.on('end', function () {
-    jsonRpc(body,resp);
+    jsonRpc(body,req,resp);
   });
   
 });
   
 
-var jsonRpc = function(rpcStr,resp,jsonpCallback){
+var jsonRpc = function(rpcStr,req,resp,jsonpCallback){
   try{
     console.log('rpcStr: ', rpcStr);
     rpc = JSON.parse(rpcStr);
@@ -78,7 +78,8 @@ var jsonRpc = function(rpcStr,resp,jsonpCallback){
         }else{
           resp.send(rpcObj);
         }
-      }
+      },
+      request: req
 
       },params);
   }catch(e){
@@ -92,7 +93,11 @@ var jsonRpc = function(rpcStr,resp,jsonpCallback){
 
 var rpcFunctions = {
   getStuff: function(){
-    this.resultCB('stuff');
+    if(this.request){
+      this.resultCB({query: this.request.query});
+    }else{
+      this.resultCB({socketId: this.socket});
+    }
   },
   getMoreStuff: function(){
     this.resultCB({moar:'stuff!'});
@@ -103,16 +108,14 @@ var rpcFunctions = {
       this.resultCB(num1 + num2);
     }catch(e){
       this.errorCB(e); 
-    }
-    
+    }    
   },
   divide: function(dividend,divisor){
     try{
       this.resultCB(dividend / divisor);
     }catch(e){
       this.errorCB(e); 
-    }
-    
+    }    
   },
   square: function( num){
     try{
@@ -124,8 +127,7 @@ var rpcFunctions = {
   ,
   badStuff: function(num){    
        this.errorCB('bad stuff!'); 
-  }
-  
+  }  
 };
 
 app.get('/smd',function(req,resp){  
@@ -183,11 +185,12 @@ io.sockets.on('connection', function (socket) {
           },
           errorCB: function(error){
             socket.emit('rpc',{result: null, error: error, id: rpc.id});
-          }
+          },
+          socket: socket
 
           },params);
       }catch(e){
-        socket.emit('rpc',{result: null, error: e, id: rpc.id});
+        socket.emit('rpc',{result: null, error: {'rpcError':e}, id: rpc.id});
       }
     }else{
       socket.emit('rpc',{result: null, error: 'method undefined', id: rpc.id});
