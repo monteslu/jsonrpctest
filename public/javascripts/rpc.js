@@ -5,50 +5,72 @@ var socket = io.connect('/');
   
   
   
-  
 var wsRpc = {
-  callNum: 0,
-  deferreds: {},
-  call : function(name){
-    this.callNum++;
-    var params = [];
-    if(arguments.length > 1){
-      for(var i = 1; i < arguments.length; i++){
-        params.push(arguments[i]);
-      }
-    }
-    var rpcObj = {method:name,params:params,id:this.callNum};
-    //console.log('rpcObj for call',rpcObj);
-    
-    var deferred = new dojo.Deferred();
-    deferred.callNum = this.callNum;
-    this.deferreds[this.callNum] = deferred;
-    socket.emit('rpc',rpcObj);
-    return deferred;
-  }
+  _callNum: 0,
+  _deferreds: {},
+  _names: []
 };
 
+socket.on('smd',function(smdDef){
+  console.log('smd ',smdDef);
+  if(smdDef && smdDef.services){
+    var sdefs = smdDef.services;
+    
+
+
+    for (s in sdefs) {
+      
+      
+      wsRpc[s] = (function(){
+        //console.log('adding rpc func: ',s, typeof s,arguments);
+        var funcname = s;
+        return function(){
+          //console.log('args',arguments);
+          wsRpc._callNum++;
+          var params = [];
+          for(var i = 0; i < arguments.length; i++){
+            params.push(arguments[i]);
+          }
+          //console.log('params',params);
+          var rpcObj = {method:funcname,params:params,id:wsRpc._callNum};
+          //console.log('rpcObj for call',funcname,rpcObj);
+          
+          var deferred = new dojo.Deferred();
+          deferred.callNum = wsRpc._callNum;
+          wsRpc._deferreds[wsRpc._callNum] = deferred;
+          socket.emit('rpc',rpcObj);
+          return deferred;
+        }
+      })(s);
+
+    }
+  }
+
+});
+
 socket.on('rpc',function(rpcObj){
-  //console.log('rpcObj',rpcObj);
+  console.log('rpcObj',rpcObj);
   try{
     if(rpcObj.error){
-      if(wsRpc.deferreds[rpcObj.id]){
+      if(wsRpc._deferreds[rpcObj.id]){
         var error = rpcObj.error;
-        wsRpc.deferreds[rpcObj.id].errback(error); 
+        wsRpc._deferreds[rpcObj.id].errback(error); 
       }
     }else{
-      if(wsRpc.deferreds[rpcObj.id]){
+      if(wsRpc._deferreds[rpcObj.id]){
         var result = rpcObj.result;
-        wsRpc.deferreds[rpcObj.id].callback(result);
+        wsRpc._deferreds[rpcObj.id].callback(result);
       }
     }
-    if(wsRpc.deferreds[rpcObj.id]){
-      delete wsRpc.deferreds[rpcObj.id]; 
+    if(wsRpc._deferreds[rpcObj.id]){
+      delete wsRpc._deferreds[rpcObj.id]; 
     }
   }catch(e){
      console.log('malformed rpc response', rpcObj,e);
   }
 });
+
+
 
 var ajaxRpc;
 dojo.ready(function(){
@@ -56,14 +78,14 @@ dojo.ready(function(){
   
   dojo.connect(dojo.byId('wbutton'),'onclick',function(){
     var timeStart = Date.now();
-    var aDeff = wsRpc.call('square',dojo.byId('num1').value);
+    var aDeff = wsRpc.square(dojo.byId('num1').value);
     aDeff.addCallback(function(result){
       dojo.byId('result').innerHTML = result;
       showElapsed(timeStart);
     });
     aDeff.addErrback(function(result){
       dojo.byId('result').innerHTML = 'ERROR:' + error; 
-      showElapsed(timeStart);
+      showElapsed(timeStart);x 
     }); 
   });
   

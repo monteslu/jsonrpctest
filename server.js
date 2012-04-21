@@ -35,7 +35,7 @@ app.get('/', routes.index);
 
 
 app.get('/jsonrpc', function(req,resp){
-  jsonRpc(req.query.rpc,resp);
+  jsonRpc(req.query.rpc,resp,req.query.callback);
 });
 
 app.post('/jsonrpc', function(req,resp){
@@ -50,25 +50,37 @@ app.post('/jsonrpc', function(req,resp){
 });
   
 
-var jsonRpc = function(rpcStr,resp){
+var jsonRpc = function(rpcStr,resp,jsonpCallback){
   try{
     console.log('rpcStr: ', rpcStr);
     rpc = JSON.parse(rpcStr);
     console.log('rpc: ', rpc, typeof rpc);
     var params = [];
-    params[0] = function(result){
-      resp.send({result: result, error: null, id: rpc.id});
-    };
-    params[1] = function(error){
-      resp.send({result: null, error: error, id: rpc.id});
-    };
     if(rpc.params && rpc.params.length){
       for(var i = 0; i < rpc.params.length; i++){
-	console.log('adding param: ', i, rpc.params[i]);
-	params.push(rpc.params[i]);  
+	     console.log('adding param: ', i, rpc.params[i]);
+	     params.push(rpc.params[i]);  
       }
     }
-    rpcFunctions[rpc.method].apply(rpcFunctions[rpc.method],params);
+    rpcFunctions[rpc.method].apply({
+      resultCB: function(result){
+        var rpcObj = {result: result, error: null, id: rpc.id};
+        if(jsonpCallback){
+          resp.send(jsonpCallback + '(' + JSON.stringify(rpcObj) + ');');
+        }else{
+          resp.send(rpcObj);
+        }
+      },
+      errorCB: function(error){
+        var rpcObj = {result: null, error: error, id: rpc.id}
+        if(jsonpCallback){
+          resp.send(jsonpCallback + '(' + JSON.stringify(rpcObj) + ');');
+        }else{
+          resp.send(rpcObj);
+        }
+      }
+
+      },params);
   }catch(e){
     resp.send({result:null,error:e,id:0});
     
@@ -79,40 +91,50 @@ var jsonRpc = function(rpcStr,resp){
 
 
 var rpcFunctions = {
-  getStuff: function(resultCB, errCB){
-    resultCB('stuff');
+  getStuff: function(){
+    this.resultCB('stuff');
   },
-  getMoreStuff: function(resultCB,errCB){
-    resultCB({moar:'stuff!'});
+  getMoreStuff: function(){
+    this.resultCB({moar:'stuff!'});
   },
-  add: function(resultCB,errCB,num1,num2){
+  add: function(num1,num2){
     try{
       console.log('add num1:',num1, ' num2:', num2)
-      resultCB(num1 + num2);
+      this.resultCB(num1 + num2);
     }catch(e){
-       errCB(e); 
+      this.errorCB(e); 
     }
     
   },
-  divide: function(resultCB,errCB,dividend,divisor){
+  divide: function(dividend,divisor){
     try{
-      resultCB(dividend / divisor);
+      this.resultCB(dividend / divisor);
     }catch(e){
-       errCB(e); 
+      this.errorCB(e); 
     }
     
   },
-  square: function(resultCB, errCB, num){
+  square: function( num){
     try{
-      resultCB(num * num);
+      this.resultCB(num * num);
     }catch(e){
-       errCB(e); 
+       this.errorCB(e); 
     }
+  }
+  ,
+  badStuff: function(num){    
+       this.errorCB('bad stuff!'); 
   }
   
 };
 
-app.get('/smd',function(req,resp){
+app.get('/smd',function(req,resp){  
+  
+  resp.send(getSMD());
+  
+});
+
+getSMD = function(){
   var smd = {
     target:"/jsonrpc", // this defines the URL to connect for the services
     transport:"POST", // We will use POST as the transport
@@ -124,11 +146,8 @@ app.get('/smd',function(req,resp){
   for(func in rpcFunctions){
     smd.services[func] = {}; 
   }
-  
-  resp.send(smd);
-  
-});
-
+  return smd;
+};
 
 
 
@@ -143,6 +162,8 @@ console.log("Express server listening on port %d in %s mode", app.address().port
 
 io.sockets.on('connection', function (socket) {
 
+  console.log('newsocket',socket);
+
   socket.on('rpc',function(rpc){
     console.log('rpc obj: ',rpc);
     if(rpcFunctions[rpc.method]){
@@ -150,19 +171,21 @@ io.sockets.on('connection', function (socket) {
       var error;
       try{
         var params = [];
-        params[0] = function(result){
-          socket.emit('rpc',{result: result, error: null, id: rpc.id});
-        };
-        params[1] = function(error){
-          socket.emit('rpc',{result: null, error: error, id: rpc.id});
-        };
         if(rpc.params && rpc.params.length){
           for(var i = 0; i < rpc.params.length; i++){
             console.log('adding param: ', i, rpc.params[i]);
             params.push(rpc.params[i]);  
           }
         }
-        rpcFunctions[rpc.method].apply(rpcFunctions[rpc.method],params);
+        rpcFunctions[rpc.method].apply({
+          resultCB: function(result){
+            socket.emit('rpc',{result: result, error: null, id: rpc.id});
+          },
+          errorCB: function(error){
+            socket.emit('rpc',{result: null, error: error, id: rpc.id});
+          }
+
+          },params);
       }catch(e){
         socket.emit('rpc',{result: null, error: e, id: rpc.id});
       }
@@ -171,6 +194,8 @@ io.sockets.on('connection', function (socket) {
     }
     
   });
+
+  socket.emit('smd',getSMD());
   
 
 });
