@@ -46,9 +46,9 @@ app.post('/jsonrpc', function(req,resp){
   req.on('end', function () {
     jsonRpc(body,req,resp);
   });
-  
+
 });
-  
+
 
 var jsonRpc = function(rpcStr,req,resp,jsonpCallback){
   try{
@@ -59,7 +59,7 @@ var jsonRpc = function(rpcStr,req,resp,jsonpCallback){
     if(rpc.params && rpc.params.length){
       for(var i = 0; i < rpc.params.length; i++){
 	     console.log('adding param: ', i, rpc.params[i]);
-	     params.push(rpc.params[i]);  
+	     params.push(rpc.params[i]);
       }
     }
     rpcFunctions[rpc.method].apply({
@@ -84,9 +84,9 @@ var jsonRpc = function(rpcStr,req,resp,jsonpCallback){
       },params);
   }catch(e){
     resp.send({result:null,error:e,id:0});
-    
+
   }
-  
+
 };
 
 
@@ -107,33 +107,33 @@ var rpcFunctions = {
       console.log('add num1:',num1, ' num2:', num2)
       this.resultCB(num1 + num2);
     }catch(e){
-      this.errorCB(e); 
-    }    
+      this.errorCB(e);
+    }
   },
   divide: function(dividend,divisor){
     try{
       this.resultCB(dividend / divisor);
     }catch(e){
-      this.errorCB(e); 
-    }    
+      this.errorCB(e);
+    }
   },
   square: function( num){
     try{
       this.resultCB(num * num);
     }catch(e){
-       this.errorCB(e); 
+       this.errorCB(e);
     }
   }
   ,
-  badStuff: function(num){    
-       this.errorCB('bad stuff!'); 
-  }  
+  badStuff: function(num){
+       this.errorCB('bad stuff!');
+  }
 };
 
-app.get('/smd',function(req,resp){  
-  
+app.get('/smd',function(req,resp){
+
   resp.send(getSMD());
-  
+
 });
 
 getSMD = function(){
@@ -144,9 +144,9 @@ getSMD = function(){
     SMDVersion:"2.0",
     services: {}
   };
-  
+
   for(func in rpcFunctions){
-    smd.services[func] = {}; 
+    smd.services[func] = {};
   }
   return smd;
 };
@@ -176,7 +176,7 @@ io.sockets.on('connection', function (socket) {
         if(rpc.params && rpc.params.length){
           for(var i = 0; i < rpc.params.length; i++){
             console.log('adding param: ', i, rpc.params[i]);
-            params.push(rpc.params[i]);  
+            params.push(rpc.params[i]);
           }
         }
         rpcFunctions[rpc.method].apply({
@@ -195,11 +195,13 @@ io.sockets.on('connection', function (socket) {
     }else{
       socket.emit('rpc',{result: null, error: 'method undefined', id: rpc.id});
     }
-    
+
   });
 
-  socket.emit('smd',getSMD());
-  
+  socket.on('smd',function(rpc){
+    socket.emit('smd',getSMD());
+  });
+
 
 });
 
