@@ -12,48 +12,25 @@ require({
   'app/WsRpc'
 ], function(dom,on,Service,JsonRPC,WsRpc){
 
-  var socket = io.connect('/');
-
-  var wsrpc = new WsRpc({socket:socket});
-
-  window.wsrpc = wsrpc;
-
+  var wsrpc = new WsRpc({socket: io.connect('/') });
+  window.wsrpc = wsrpc; //export global to play with in web dev tools
 
   var ajaxRpc = new dojox.rpc.Service('/smd');
 
-    on(document,'#wbutton:click',function(){
-      var timeStart = Date.now();
-      var aDeff = wsrpc.square(dom.byId('num1').value);
-      aDeff.addCallback(function(result){
-        dom.byId('result').innerHTML = result;
-        showElapsed(timeStart);
-      });
-      aDeff.addErrback(function(result){
-        dom.byId('result').innerHTML = 'ERROR:' + error;
-        showElapsed(timeStart);
-      });
-    });
+  on(document,'#wbutton:click',function(){
+    var timeStart = Date.now();
+    wsrpc.square(dom.byId('num1').value).then(function(result){ showResult(result,timeStart); });
+  });
 
 
-    on(document,'#abutton:click',function(){
-      var timeStart = Date.now();
-      var aDeff = ajaxRpc.square(dom.byId('num1').value);
-      aDeff.addCallback(function(result){
-        dom.byId('result').innerHTML = result;
-        showElapsed(timeStart);
-      });
-      aDeff.addErrback(function(result){
-        dom.byId('result').innerHTML = 'ERROR:' + error;
-        showElapsed(timeStart);
-      });
-    });
+  on(document,'#abutton:click',function(){
+    var timeStart = Date.now();
+    ajaxRpc.square(dom.byId('num1').value).then(function(result){ showResult(result,timeStart); });
+  });
 
-  var showElapsed = function(timeStart){
-    dom.byId('elapsedTime').innerHTML = getElapsed(timeStart);
-  };
-
-  var getElapsed = function(start){
-    return Date.now() - start;
+  var showResult = function(result, timeStart){
+    dom.byId('result').innerHTML = result;
+    dom.byId('elapsedTime').innerHTML = Date.now() - timeStart;
   };
 
 });
