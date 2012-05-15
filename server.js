@@ -10,7 +10,7 @@ var app = module.exports = express.createServer();
 
 var io = require('socket.io').listen(app);
 
-// Configuration
+//Configuration
 
 app.configure(function(){
   app.set('views', __dirname + '/views');
